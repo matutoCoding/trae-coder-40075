@@ -101,6 +101,16 @@ export interface DeburringRecord {
   time: string
 }
 
+export interface RequisitionRecord {
+  id: string
+  sheetSpec: string
+  quantity: number
+  purpose: string
+  applicant: string
+  createdAt: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
 export interface BillingRecord {
   id: string
   workerId: string
@@ -143,6 +153,7 @@ const PERSIST_KEYS: (keyof StoreState)[] = [
   'burrInspections',
   'billingRecords',
   'deburringRecords',
+  'requisitionRecords',
 ]
 
 const mockDrawings: Drawing[] = [
@@ -226,6 +237,13 @@ const mockDeburringRecords: DeburringRecord[] = [
   { id: 'DR005', partName: '定位块', method: '手动打磨', duration: 50, operator: '赵磊', time: '2025-06-16 14:45' },
 ]
 
+const mockRequisitionRecords: RequisitionRecord[] = [
+  { id: 'rq-001', sheetSpec: 'Q235B-6×1500×3000', quantity: 5, purpose: '方案A-支架组件', applicant: '张工', createdAt: '2025-06-10', status: 'approved' },
+  { id: 'rq-002', sheetSpec: '304不锈钢-4×1220×2440', quantity: 3, purpose: '方案B-外壳面板', applicant: '李工', createdAt: '2025-06-12', status: 'pending' },
+  { id: 'rq-003', sheetSpec: 'Q345R-8×1500×6000', quantity: 2, purpose: '方案C-法兰盘组', applicant: '王工', createdAt: '2025-06-08', status: 'approved' },
+  { id: 'rq-004', sheetSpec: 'Q235B-10×2000×6000', quantity: 4, purpose: '日常备料', applicant: '赵工', createdAt: '2025-06-05', status: 'rejected' },
+]
+
 const mockBillingRecords: BillingRecord[] = [
   { id: 'BL001', workerId: 'W001', workerName: '王建国', processType: '激光切割', partCount: 27, unitPrice: 2.5, totalAmount: 67.5, workHours: 4.0, date: '2025-06-02', status: 'settled' },
   { id: 'BL002', workerId: 'W002', workerName: '李明辉', processType: '激光切割', partCount: 29, unitPrice: 2.5, totalAmount: 72.5, workHours: 8.5, date: '2025-06-07', status: 'settled' },
@@ -274,6 +292,7 @@ interface StoreState {
   burrInspections: BurrInspection[]
   billingRecords: BillingRecord[]
   deburringRecords: DeburringRecord[]
+  requisitionRecords: RequisitionRecord[]
   devices: Device[]
   todos: TodoItem[]
   addDrawing: (drawing: Drawing) => void
@@ -293,6 +312,7 @@ interface StoreState {
   incrementSortedCount: (id: string) => void
   addBurrInspection: (inspection: Omit<BurrInspection, 'id' | 'inspectTime' | 'partId'>) => void
   addDeburringRecord: (record: DeburringRecord) => void
+  addRequisitionRecord: (record: RequisitionRecord) => void
   addBillingRecord: (record: BillingRecord) => void
   updateBillingStatus: (id: string, status: BillingRecord['status']) => void
   settleAllConfirmed: () => void
@@ -310,6 +330,7 @@ const getInitialState = (): StoreState => {
     burrInspections: mockBurrInspections,
     billingRecords: mockBillingRecords,
     deburringRecords: mockDeburringRecords,
+    requisitionRecords: mockRequisitionRecords,
     devices: mockDevices,
     todos: mockTodos,
     addDrawing: () => {},
@@ -329,6 +350,7 @@ const getInitialState = (): StoreState => {
     incrementSortedCount: () => {},
     addBurrInspection: () => {},
     addDeburringRecord: () => {},
+    addRequisitionRecord: () => {},
     addBillingRecord: () => {},
     updateBillingStatus: () => {},
     settleAllConfirmed: () => {},
@@ -466,6 +488,12 @@ export const useStore = create<StoreState>((set, get) => {
       const newRecords = [record, ...state.deburringRecords]
       saveToStorage({ deburringRecords: newRecords })
       return { deburringRecords: newRecords }
+    }),
+
+    addRequisitionRecord: (record) => set((state) => {
+      const newRecords = [record, ...state.requisitionRecords]
+      saveToStorage({ requisitionRecords: newRecords })
+      return { requisitionRecords: newRecords }
     }),
 
     addBillingRecord: (record) => set((state) => {

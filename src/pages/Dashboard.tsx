@@ -21,9 +21,9 @@ const shortcuts = [
   { icon: FolderOpen, label: '图纸管理', to: '/drawings' },
   { icon: Grid3X3, label: '智能排版', to: '/nesting' },
   { icon: Zap, label: '切割监控', to: '/cutting' },
-  { icon: ClipboardList, label: '生产工单', to: '/orders' },
-  { icon: LayoutDashboard, label: '数据报表', to: '/reports' },
-  { icon: Settings, label: '系统设置', to: '/settings' },
+  { icon: PackageSearch, label: '零件分拣', to: '/sorting' },
+  { icon: ClipboardList, label: '计件结算', to: '/billing' },
+  { icon: Settings, label: '板材库存', to: '/sheets' },
 ]
 
 function StatCard({ icon: Icon, label, count, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; count: number; delay: string }) {

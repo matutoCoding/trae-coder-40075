@@ -153,7 +153,7 @@ export default function CuttingRecords() {
       </div>
 
       <div className="mt-4 flex gap-3">
-        <Link to="/cutting/monitor" className="text-industrial-orange hover:text-industrial-orange-light text-sm transition-colors">
+        <Link to="/cutting" className="text-industrial-orange hover:text-industrial-orange-light text-sm transition-colors">
           ← 返回监控
         </Link>
       </div>
