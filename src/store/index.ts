@@ -371,13 +371,22 @@ const getInitialState = (): StoreState => {
 
 const saveToStorage = (state: Partial<StoreState>) => {
   try {
-    const data: Record<string, unknown> = {}
+    const existing: Record<string, unknown> = {}
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed && typeof parsed === 'object') {
+          Object.assign(existing, parsed)
+        }
+      }
+    } catch {}
     PERSIST_KEYS.forEach((key) => {
       if (state[key] !== undefined) {
-        data[key] = state[key]
+        existing[key] = state[key]
       }
     })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
   } catch (e) {
     console.warn('Failed to save to localStorage', e)
   }
