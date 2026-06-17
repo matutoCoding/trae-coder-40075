@@ -104,11 +104,24 @@ export interface DeburringRecord {
 export interface RequisitionRecord {
   id: string
   sheetSpec: string
+  sheetId: string
   quantity: number
   purpose: string
   applicant: string
   createdAt: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn'
+}
+
+export interface StockFlow {
+  id: string
+  sheetId: string
+  sheetSpec: string
+  type: 'in' | 'out'
+  source: string
+  quantity: number
+  operator: string
+  remark: string
+  time: string
 }
 
 export interface BillingRecord {
@@ -154,6 +167,7 @@ const PERSIST_KEYS: (keyof StoreState)[] = [
   'billingRecords',
   'deburringRecords',
   'requisitionRecords',
+  'stockFlows',
 ]
 
 const mockDrawings: Drawing[] = [
@@ -238,10 +252,20 @@ const mockDeburringRecords: DeburringRecord[] = [
 ]
 
 const mockRequisitionRecords: RequisitionRecord[] = [
-  { id: 'rq-001', sheetSpec: 'Q235B-6×1500×3000', quantity: 5, purpose: '方案A-支架组件', applicant: '张工', createdAt: '2025-06-10', status: 'approved' },
-  { id: 'rq-002', sheetSpec: '304不锈钢-4×1220×2440', quantity: 3, purpose: '方案B-外壳面板', applicant: '李工', createdAt: '2025-06-12', status: 'pending' },
-  { id: 'rq-003', sheetSpec: 'Q345R-8×1500×6000', quantity: 2, purpose: '方案C-法兰盘组', applicant: '王工', createdAt: '2025-06-08', status: 'approved' },
-  { id: 'rq-004', sheetSpec: 'Q235B-10×2000×6000', quantity: 4, purpose: '日常备料', applicant: '赵工', createdAt: '2025-06-05', status: 'rejected' },
+  { id: 'rq-001', sheetSpec: 'Q235B-6×1500×3000', sheetId: 'SM001', quantity: 5, purpose: '方案A-支架组件', applicant: '张工', createdAt: '2025-06-10', status: 'approved' },
+  { id: 'rq-002', sheetSpec: '304不锈钢-4×1220×2440', sheetId: 'SM002', quantity: 3, purpose: '方案B-外壳面板', applicant: '李工', createdAt: '2025-06-12', status: 'pending' },
+  { id: 'rq-003', sheetSpec: 'Q345R-8×1500×6000', sheetId: 'SM003', quantity: 2, purpose: '方案C-法兰盘组', applicant: '王工', createdAt: '2025-06-08', status: 'approved' },
+  { id: 'rq-004', sheetSpec: 'Q235B-10×2000×6000', sheetId: 'SM004', quantity: 4, purpose: '日常备料', applicant: '赵工', createdAt: '2025-06-05', status: 'rejected' },
+]
+
+const mockStockFlows: StockFlow[] = [
+  { id: 'SF001', sheetId: 'SM001', sheetSpec: 'Q235B-6×1500×3000', type: 'in', source: '采购入库', quantity: 50, operator: '仓库管理员', remark: '月初采购到货', time: '2025-06-01 09:00' },
+  { id: 'SF002', sheetId: 'SM001', sheetSpec: 'Q235B-6×1500×3000', type: 'out', source: '领用出库', quantity: 5, operator: '张工', remark: '方案A-支架组件', time: '2025-06-10 14:30' },
+  { id: 'SF003', sheetId: 'SM002', sheetSpec: '304不锈钢-4×1220×2440', type: 'in', source: '采购入库', quantity: 30, operator: '仓库管理员', remark: '不锈钢板补库', time: '2025-06-03 10:15' },
+  { id: 'SF004', sheetId: 'SM003', sheetSpec: 'Q345R-8×1500×6000', type: 'in', source: '采购入库', quantity: 15, operator: '仓库管理员', remark: '压力容器板', time: '2025-06-02 11:00' },
+  { id: 'SF005', sheetId: 'SM003', sheetSpec: 'Q345R-8×1500×6000', type: 'out', source: '领用出库', quantity: 2, operator: '王工', remark: '方案C-法兰盘组', time: '2025-06-08 09:30' },
+  { id: 'SF006', sheetId: 'SM001', sheetSpec: 'Q235B-6×1500×3000', type: 'in', source: '余料回收', quantity: 3, operator: '李工', remark: '排版剩余余料', time: '2025-06-11 16:45' },
+  { id: 'SF007', sheetId: 'SM004', sheetSpec: 'Q235B-10×2000×6000', type: 'in', source: '采购入库', quantity: 10, operator: '仓库管理员', remark: '厚板补货', time: '2025-06-04 08:30' },
 ]
 
 const mockBillingRecords: BillingRecord[] = [
@@ -293,6 +317,7 @@ interface StoreState {
   billingRecords: BillingRecord[]
   deburringRecords: DeburringRecord[]
   requisitionRecords: RequisitionRecord[]
+  stockFlows: StockFlow[]
   devices: Device[]
   todos: TodoItem[]
   addDrawing: (drawing: Drawing) => void
@@ -313,6 +338,11 @@ interface StoreState {
   addBurrInspection: (inspection: Omit<BurrInspection, 'id' | 'inspectTime' | 'partId'>) => void
   addDeburringRecord: (record: DeburringRecord) => void
   addRequisitionRecord: (record: RequisitionRecord) => void
+  approveRequisition: (id: string) => void
+  rejectRequisition: (id: string) => void
+  withdrawRequisition: (id: string) => void
+  addStockFlow: (flow: Omit<StockFlow, 'id' | 'time'>) => void
+  stockIn: (sheetId: string, quantity: number, source: string, remark: string, operator: string) => void
   addBillingRecord: (record: BillingRecord) => void
   updateBillingStatus: (id: string, status: BillingRecord['status']) => void
   settleAllConfirmed: () => void
@@ -331,6 +361,7 @@ const getInitialState = (): StoreState => {
     billingRecords: mockBillingRecords,
     deburringRecords: mockDeburringRecords,
     requisitionRecords: mockRequisitionRecords,
+    stockFlows: mockStockFlows,
     devices: mockDevices,
     todos: mockTodos,
     addDrawing: () => {},
@@ -351,6 +382,11 @@ const getInitialState = (): StoreState => {
     addBurrInspection: () => {},
     addDeburringRecord: () => {},
     addRequisitionRecord: () => {},
+    approveRequisition: () => {},
+    rejectRequisition: () => {},
+    withdrawRequisition: () => {},
+    addStockFlow: () => {},
+    stockIn: () => {},
     addBillingRecord: () => {},
     updateBillingStatus: () => {},
     settleAllConfirmed: () => {},
@@ -503,6 +539,110 @@ export const useStore = create<StoreState>((set, get) => {
       const newRecords = [record, ...state.requisitionRecords]
       saveToStorage({ requisitionRecords: newRecords })
       return { requisitionRecords: newRecords }
+    }),
+
+    approveRequisition: (id) => set((state) => {
+      const req = state.requisitionRecords.find(r => r.id === id)
+      if (!req || req.status !== 'pending') return {}
+      const sheet = state.sheetMaterials.find(s => s.id === req.sheetId)
+      if (!sheet) return {}
+      const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
+      const newMaterials = state.sheetMaterials.map(s =>
+        s.id === req.sheetId ? { ...s, stock: Math.max(0, s.stock - req.quantity) } : s
+      )
+      const newRecords = state.requisitionRecords.map(r =>
+        r.id === id ? { ...r, status: 'approved' as const } : r
+      )
+      const newFlow: StockFlow = {
+        id: `SF${Date.now()}`,
+        sheetId: req.sheetId,
+        sheetSpec: req.sheetSpec,
+        type: 'out',
+        source: '领用出库',
+        quantity: req.quantity,
+        operator: req.applicant,
+        remark: req.purpose,
+        time: now,
+      }
+      const newFlows = [newFlow, ...state.stockFlows]
+      saveToStorage({ sheetMaterials: newMaterials, requisitionRecords: newRecords, stockFlows: newFlows })
+      return { sheetMaterials: newMaterials, requisitionRecords: newRecords, stockFlows: newFlows }
+    }),
+
+    rejectRequisition: (id) => set((state) => {
+      const req = state.requisitionRecords.find(r => r.id === id)
+      if (!req || req.status !== 'pending') return {}
+      const newRecords = state.requisitionRecords.map(r =>
+        r.id === id ? { ...r, status: 'rejected' as const } : r
+      )
+      saveToStorage({ requisitionRecords: newRecords })
+      return { requisitionRecords: newRecords }
+    }),
+
+    withdrawRequisition: (id) => set((state) => {
+      const req = state.requisitionRecords.find(r => r.id === id)
+      if (!req) return {}
+      let newMaterials = state.sheetMaterials
+      let newFlows = state.stockFlows
+      if (req.status === 'approved') {
+        newMaterials = state.sheetMaterials.map(s =>
+          s.id === req.sheetId ? { ...s, stock: s.stock + req.quantity } : s
+        )
+        const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
+        const flow: StockFlow = {
+          id: `SF${Date.now()}`,
+          sheetId: req.sheetId,
+          sheetSpec: req.sheetSpec,
+          type: 'in',
+          source: '领用撤回',
+          quantity: req.quantity,
+          operator: req.applicant,
+          remark: `撤回：${req.purpose}`,
+          time: now,
+        }
+        newFlows = [flow, ...state.stockFlows]
+      }
+      const newRecords = state.requisitionRecords.map(r =>
+        r.id === id ? { ...r, status: 'withdrawn' as const } : r
+      )
+      const toSave: Partial<StoreState> = { requisitionRecords: newRecords }
+      if (req.status === 'approved') {
+        toSave.sheetMaterials = newMaterials
+        toSave.stockFlows = newFlows
+      }
+      saveToStorage(toSave)
+      return { sheetMaterials: newMaterials, requisitionRecords: newRecords, stockFlows: newFlows }
+    }),
+
+    addStockFlow: (flow) => set((state) => {
+      const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
+      const newFlow: StockFlow = { ...flow, id: `SF${Date.now()}`, time: now }
+      const newFlows = [newFlow, ...state.stockFlows]
+      saveToStorage({ stockFlows: newFlows })
+      return { stockFlows: newFlows }
+    }),
+
+    stockIn: (sheetId, quantity, source, remark, operator) => set((state) => {
+      const sheet = state.sheetMaterials.find(s => s.id === sheetId)
+      if (!sheet) return {}
+      const newMaterials = state.sheetMaterials.map(s =>
+        s.id === sheetId ? { ...s, stock: s.stock + quantity } : s
+      )
+      const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
+      const flow: StockFlow = {
+        id: `SF${Date.now()}`,
+        sheetId,
+        sheetSpec: sheet.spec,
+        type: 'in',
+        source,
+        quantity,
+        operator,
+        remark,
+        time: now,
+      }
+      const newFlows = [flow, ...state.stockFlows]
+      saveToStorage({ sheetMaterials: newMaterials, stockFlows: newFlows })
+      return { sheetMaterials: newMaterials, stockFlows: newFlows }
     }),
 
     addBillingRecord: (record) => set((state) => {
