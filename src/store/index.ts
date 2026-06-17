@@ -92,6 +92,15 @@ export interface BurrInspection {
   remark: string
 }
 
+export interface DeburringRecord {
+  id: string
+  partName: string
+  method: string
+  duration: number
+  operator: string
+  time: string
+}
+
 export interface BillingRecord {
   id: string
   workerId: string
@@ -122,37 +131,19 @@ export interface TodoItem {
 export type DrawingStatus = Drawing['status']
 export type DrawingFormat = Drawing['format']
 
-interface StoreState {
-  drawings: Drawing[]
-  nestingPlans: NestingPlan[]
-  sheetMaterials: SheetMaterial[]
-  cuttingParams: CuttingParams[]
-  cuttingRecords: CuttingRecord[]
-  partSortItems: PartSortItem[]
-  burrInspections: BurrInspection[]
-  billingRecords: BillingRecord[]
-  devices: Device[]
-  todos: TodoItem[]
-  addDrawing: (drawing: Drawing) => void
-  updateDrawingStatus: (id: string, status: Drawing['status']) => void
-  deleteDrawing: (id: string) => void
-  addNestingPlan: (plan: NestingPlan) => void
-  updateNestingPlanStatus: (id: string, status: NestingPlan['status']) => void
-  findNestingPlan: (id: string) => NestingPlan | undefined
-  addSheetMaterial: (material: SheetMaterial) => void
-  updateSheetStock: (id: string, stock: number) => void
-  addCuttingParam: (params: CuttingParams) => void
-  updateCuttingParam: (id: string, updates: Partial<Omit<CuttingParams, 'id'>>) => void
-  addCuttingRecord: (record: CuttingRecord) => void
-  updateCuttingRecordStatus: (id: string, status: CuttingRecord['status']) => void
-  updatePartSortStatus: (id: string, status: PartSortItem['status'], sortedCount?: number) => void
-  incrementSortedCount: (id: string) => void
-  addBurrInspection: (inspection: Omit<BurrInspection, 'id' | 'time' | 'inspectTime' | 'partId'>) => void
-  addBillingRecord: (record: BillingRecord) => void
-  updateBillingStatus: (id: string, status: BillingRecord['status']) => void
-  settleAllConfirmed: () => void
-  toggleTodo: (id: string) => void
-}
+const STORAGE_KEY = 'lasercut-pro-store'
+
+const PERSIST_KEYS: (keyof StoreState)[] = [
+  'drawings',
+  'nestingPlans',
+  'sheetMaterials',
+  'cuttingParams',
+  'cuttingRecords',
+  'partSortItems',
+  'burrInspections',
+  'billingRecords',
+  'deburringRecords',
+]
 
 const mockDrawings: Drawing[] = [
   { id: 'DW001', name: '支架组件A', customer: '张伟机械', format: 'DXF', status: 'completed', uploadTime: '2025-06-01 09:15', fileSize: 2457600, partCount: 12, thumbnailUrl: '/thumbnails/dw001.png' },
@@ -227,6 +218,14 @@ const mockBurrInspections: BurrInspection[] = [
   { id: 'BI007', partId: 'PS008', partName: '转接板', inspector: '钱晓明', inspectTime: '2025-06-18 10:30', burrLevel: 'moderate', sectionQuality: 'acceptable', result: 'pass', remark: '个别孔位有毛刺' },
 ]
 
+const mockDeburringRecords: DeburringRecord[] = [
+  { id: 'DR001', partName: 'L型支架', method: '机械打磨', duration: 25, operator: '王建国', time: '2025-06-02 14:30' },
+  { id: 'DR002', partName: 'U型卡扣', method: '手动打磨', duration: 40, operator: '李明辉', time: '2025-06-03 09:15' },
+  { id: 'DR003', partName: '连接板主件', method: '化学处理', duration: 60, operator: '张伟', time: '2025-06-08 10:00' },
+  { id: 'DR004', partName: '加强筋片', method: '机械打磨', duration: 30, operator: '陈志强', time: '2025-06-17 15:20' },
+  { id: 'DR005', partName: '定位块', method: '手动打磨', duration: 50, operator: '赵磊', time: '2025-06-16 14:45' },
+]
+
 const mockBillingRecords: BillingRecord[] = [
   { id: 'BL001', workerId: 'W001', workerName: '王建国', processType: '激光切割', partCount: 27, unitPrice: 2.5, totalAmount: 67.5, workHours: 4.0, date: '2025-06-02', status: 'settled' },
   { id: 'BL002', workerId: 'W002', workerName: '李明辉', processType: '激光切割', partCount: 29, unitPrice: 2.5, totalAmount: 72.5, workHours: 8.5, date: '2025-06-07', status: 'settled' },
@@ -252,68 +251,245 @@ const mockTodos: TodoItem[] = [
   { id: '5', icon: 'ClipboardList', text: '准备鑫达制造发货清单', priority: 'low', checked: false },
 ]
 
-export const useStore = create<StoreState>((set, get) => ({
-  drawings: mockDrawings,
-  nestingPlans: mockNestingPlans,
-  sheetMaterials: mockSheetMaterials,
-  cuttingParams: mockCuttingParams,
-  cuttingRecords: mockCuttingRecords,
-  partSortItems: mockPartSortItems,
-  burrInspections: mockBurrInspections,
-  billingRecords: mockBillingRecords,
-  devices: mockDevices,
-  todos: mockTodos,
-  addDrawing: (drawing) => set((state) => ({ drawings: [...state.drawings, drawing] })),
-  updateDrawingStatus: (id, status) => set((state) => ({
-    drawings: state.drawings.map((d) => (d.id === id ? { ...d, status } : d)),
-  })),
-  deleteDrawing: (id) => set((state) => ({
-    drawings: state.drawings.filter((d) => d.id !== id),
-  })),
-  addNestingPlan: (plan) => set((state) => ({ nestingPlans: [...state.nestingPlans, plan] })),
-  updateNestingPlanStatus: (id, status) => set((state) => ({
-    nestingPlans: state.nestingPlans.map((p) => (p.id === id ? { ...p, status } : p)),
-  })),
-  findNestingPlan: (id) => get().nestingPlans.find((p) => p.id === id),
-  addSheetMaterial: (material) => set((state) => ({ sheetMaterials: [...state.sheetMaterials, material] })),
-  updateSheetStock: (id, stock) => set((state) => ({
-    sheetMaterials: state.sheetMaterials.map((m) => (m.id === id ? { ...m, stock } : m)),
-  })),
-  addCuttingParam: (params) => set((state) => ({ cuttingParams: [...state.cuttingParams, params] })),
-  updateCuttingParam: (id, updates) => set((state) => ({
-    cuttingParams: state.cuttingParams.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-  })),
-  addCuttingRecord: (record) => set((state) => ({ cuttingRecords: [...state.cuttingRecords, record] })),
-  updateCuttingRecordStatus: (id, status) => set((state) => ({
-    cuttingRecords: state.cuttingRecords.map((r) => (r.id === id ? { ...r, status } : r)),
-  })),
-  updatePartSortStatus: (id, status, sortedCount) => set((state) => ({
-    partSortItems: state.partSortItems.map((p) =>
-      p.id === id ? { ...p, status, ...(sortedCount !== undefined ? { sortedCount } : {}) } : p
-    ),
-  })),
-  incrementSortedCount: (id) => set((state) => ({
-    partSortItems: state.partSortItems.map((p) => {
-      if (p.id !== id) return p
-      const newCount = Math.min(p.sortedCount + 1, p.quantity)
-      const newStatus: PartSortItem['status'] = newCount >= p.quantity ? 'completed' : newCount > 0 ? 'sorting' : 'pending'
-      return { ...p, sortedCount: newCount, status: newStatus }
+function loadFromStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return { ...defaultValue, ...parsed } as T
+    }
+  } catch {
+    console.warn('Failed to load from localStorage')
+  }
+  return defaultValue
+}
+
+interface StoreState {
+  drawings: Drawing[]
+  nestingPlans: NestingPlan[]
+  sheetMaterials: SheetMaterial[]
+  cuttingParams: CuttingParams[]
+  cuttingRecords: CuttingRecord[]
+  partSortItems: PartSortItem[]
+  burrInspections: BurrInspection[]
+  billingRecords: BillingRecord[]
+  deburringRecords: DeburringRecord[]
+  devices: Device[]
+  todos: TodoItem[]
+  addDrawing: (drawing: Drawing) => void
+  updateDrawingStatus: (id: string, status: Drawing['status']) => void
+  deleteDrawing: (id: string) => void
+  addNestingPlan: (plan: NestingPlan) => void
+  updateNestingPlanStatus: (id: string, status: NestingPlan['status']) => void
+  findNestingPlan: (id: string) => NestingPlan | undefined
+  findDrawing: (id: string) => Drawing | undefined
+  addSheetMaterial: (material: SheetMaterial) => void
+  updateSheetStock: (id: string, stock: number) => void
+  addCuttingParam: (params: CuttingParams) => void
+  updateCuttingParam: (id: string, updates: Partial<Omit<CuttingParams, 'id'>>) => void
+  addCuttingRecord: (record: CuttingRecord) => void
+  updateCuttingRecordStatus: (id: string, status: CuttingRecord['status']) => void
+  updatePartSortStatus: (id: string, status: PartSortItem['status'], sortedCount?: number) => void
+  incrementSortedCount: (id: string) => void
+  addBurrInspection: (inspection: Omit<BurrInspection, 'id' | 'inspectTime' | 'partId'>) => void
+  addDeburringRecord: (record: DeburringRecord) => void
+  addBillingRecord: (record: BillingRecord) => void
+  updateBillingStatus: (id: string, status: BillingRecord['status']) => void
+  settleAllConfirmed: () => void
+  toggleTodo: (id: string) => void
+}
+
+const getInitialState = (): StoreState => {
+  const defaultState: StoreState = {
+    drawings: mockDrawings,
+    nestingPlans: mockNestingPlans,
+    sheetMaterials: mockSheetMaterials,
+    cuttingParams: mockCuttingParams,
+    cuttingRecords: mockCuttingRecords,
+    partSortItems: mockPartSortItems,
+    burrInspections: mockBurrInspections,
+    billingRecords: mockBillingRecords,
+    deburringRecords: mockDeburringRecords,
+    devices: mockDevices,
+    todos: mockTodos,
+    addDrawing: () => {},
+    updateDrawingStatus: () => {},
+    deleteDrawing: () => {},
+    addNestingPlan: () => {},
+    updateNestingPlanStatus: () => {},
+    findNestingPlan: () => undefined,
+    findDrawing: () => undefined,
+    addSheetMaterial: () => {},
+    updateSheetStock: () => {},
+    addCuttingParam: () => {},
+    updateCuttingParam: () => {},
+    addCuttingRecord: () => {},
+    updateCuttingRecordStatus: () => {},
+    updatePartSortStatus: () => {},
+    incrementSortedCount: () => {},
+    addBurrInspection: () => {},
+    addDeburringRecord: () => {},
+    addBillingRecord: () => {},
+    updateBillingStatus: () => {},
+    settleAllConfirmed: () => {},
+    toggleTodo: () => {},
+  }
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return { ...defaultState, ...parsed }
+    }
+  } catch {
+    console.warn('Failed to load initial state from localStorage')
+  }
+  return defaultState
+}
+
+const saveToStorage = (state: Partial<StoreState>) => {
+  try {
+    const data: Record<string, unknown> = {}
+    PERSIST_KEYS.forEach((key) => {
+      if (state[key] !== undefined) {
+        data[key] = state[key]
+      }
+    })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch (e) {
+    console.warn('Failed to save to localStorage', e)
+  }
+}
+
+export const useStore = create<StoreState>((set, get) => {
+  const initialState = getInitialState()
+
+  return {
+    ...initialState,
+
+    addDrawing: (drawing) => set((state) => {
+      const newDrawings = [...state.drawings, drawing]
+      saveToStorage({ drawings: newDrawings })
+      return { drawings: newDrawings }
     }),
-  })),
-  addBurrInspection: (inspection) => set((state) => {
-    const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
-    return { burrInspections: [{ ...inspection, id: `BI${Date.now()}`, partId: '', inspectTime: now }, ...state.burrInspections] }
-  }),
-  addBillingRecord: (record) => set((state) => ({ billingRecords: [...state.billingRecords, record] })),
-  updateBillingStatus: (id, status) => set((state) => ({
-    billingRecords: state.billingRecords.map((b) => (b.id === id ? { ...b, status } : b)),
-  })),
-  settleAllConfirmed: () => set((state) => ({
-    billingRecords: state.billingRecords.map((b) =>
-      b.status === 'confirmed' ? { ...b, status: 'settled' as const } : b
-    ),
-  })),
-  toggleTodo: (id) => set((state) => ({
-    todos: state.todos.map((t) => (t.id === id ? { ...t, checked: !t.checked } : t)),
-  })),
-}))
+
+    updateDrawingStatus: (id, status) => set((state) => {
+      const newDrawings = state.drawings.map((d) => (d.id === id ? { ...d, status } : d))
+      saveToStorage({ drawings: newDrawings })
+      return { drawings: newDrawings }
+    }),
+
+    deleteDrawing: (id) => set((state) => {
+      const newDrawings = state.drawings.filter((d) => d.id !== id)
+      saveToStorage({ drawings: newDrawings })
+      return { drawings: newDrawings }
+    }),
+
+    addNestingPlan: (plan) => set((state) => {
+      const newPlans = [...state.nestingPlans, plan]
+      saveToStorage({ nestingPlans: newPlans })
+      return { nestingPlans: newPlans }
+    }),
+
+    updateNestingPlanStatus: (id, status) => set((state) => {
+      const newPlans = state.nestingPlans.map((p) => (p.id === id ? { ...p, status } : p))
+      saveToStorage({ nestingPlans: newPlans })
+      return { nestingPlans: newPlans }
+    }),
+
+    findNestingPlan: (id) => get().nestingPlans.find((p) => p.id === id),
+    findDrawing: (id) => get().drawings.find((d) => d.id === id),
+
+    addSheetMaterial: (material) => set((state) => {
+      const newMaterials = [...state.sheetMaterials, material]
+      saveToStorage({ sheetMaterials: newMaterials })
+      return { sheetMaterials: newMaterials }
+    }),
+
+    updateSheetStock: (id, stock) => set((state) => {
+      const newMaterials = state.sheetMaterials.map((m) => (m.id === id ? { ...m, stock } : m))
+      saveToStorage({ sheetMaterials: newMaterials })
+      return { sheetMaterials: newMaterials }
+    }),
+
+    addCuttingParam: (params) => set((state) => {
+      const newParams = [...state.cuttingParams, params]
+      saveToStorage({ cuttingParams: newParams })
+      return { cuttingParams: newParams }
+    }),
+
+    updateCuttingParam: (id, updates) => set((state) => {
+      const newParams = state.cuttingParams.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      saveToStorage({ cuttingParams: newParams })
+      return { cuttingParams: newParams }
+    }),
+
+    addCuttingRecord: (record) => set((state) => {
+      const newRecords = [...state.cuttingRecords, record]
+      saveToStorage({ cuttingRecords: newRecords })
+      return { cuttingRecords: newRecords }
+    }),
+
+    updateCuttingRecordStatus: (id, status) => set((state) => {
+      const newRecords = state.cuttingRecords.map((r) => (r.id === id ? { ...r, status } : r))
+      saveToStorage({ cuttingRecords: newRecords })
+      return { cuttingRecords: newRecords }
+    }),
+
+    updatePartSortStatus: (id, status, sortedCount) => set((state) => {
+      const newItems = state.partSortItems.map((p) =>
+        p.id === id ? { ...p, status, ...(sortedCount !== undefined ? { sortedCount } : {}) } : p
+      )
+      saveToStorage({ partSortItems: newItems })
+      return { partSortItems: newItems }
+    }),
+
+    incrementSortedCount: (id) => set((state) => {
+      const newItems = state.partSortItems.map((p) => {
+        if (p.id !== id) return p
+        const newCount = Math.min(p.sortedCount + 1, p.quantity)
+        const newStatus: PartSortItem['status'] = newCount >= p.quantity ? 'completed' : newCount > 0 ? 'sorting' : 'pending'
+        return { ...p, sortedCount: newCount, status: newStatus }
+      })
+      saveToStorage({ partSortItems: newItems })
+      return { partSortItems: newItems }
+    }),
+
+    addBurrInspection: (inspection) => set((state) => {
+      const now = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-')
+      const newInspections = [{ ...inspection, id: `BI${Date.now()}`, partId: '', inspectTime: now }, ...state.burrInspections]
+      saveToStorage({ burrInspections: newInspections })
+      return { burrInspections: newInspections }
+    }),
+
+    addDeburringRecord: (record) => set((state) => {
+      const newRecords = [record, ...state.deburringRecords]
+      saveToStorage({ deburringRecords: newRecords })
+      return { deburringRecords: newRecords }
+    }),
+
+    addBillingRecord: (record) => set((state) => {
+      const newRecords = [...state.billingRecords, record]
+      saveToStorage({ billingRecords: newRecords })
+      return { billingRecords: newRecords }
+    }),
+
+    updateBillingStatus: (id, status) => set((state) => {
+      const newRecords = state.billingRecords.map((b) => (b.id === id ? { ...b, status } : b))
+      saveToStorage({ billingRecords: newRecords })
+      return { billingRecords: newRecords }
+    }),
+
+    settleAllConfirmed: () => set((state) => {
+      const newRecords = state.billingRecords.map((b) =>
+        b.status === 'confirmed' ? { ...b, status: 'settled' as const } : b
+      )
+      saveToStorage({ billingRecords: newRecords })
+      return { billingRecords: newRecords }
+    }),
+
+    toggleTodo: (id) => set((state) => ({
+      todos: state.todos.map((t) => (t.id === id ? { ...t, checked: !t.checked } : t)),
+    })),
+  }
+})

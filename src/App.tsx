@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import DrawingList from "@/pages/drawings/DrawingList";
 import UploadDrawing from "@/pages/drawings/UploadDrawing";
+import DrawingDetail from "@/pages/drawings/DrawingDetail";
 import NestingWorkbench from "@/pages/nesting/NestingWorkbench";
 import NestingPlanDetail from "@/pages/nesting/NestingPlanDetail";
 import SheetInventory from "@/pages/sheets/SheetInventory";
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/drawings" element={<DrawingList />} />
           <Route path="/drawings/upload" element={<UploadDrawing />} />
+          <Route path="/drawings/:id" element={<DrawingDetail />} />
           <Route path="/nesting" element={<NestingWorkbench />} />
           <Route path="/nesting/:id" element={<NestingPlanDetail />} />
           <Route path="/sheets" element={<SheetInventory />} />

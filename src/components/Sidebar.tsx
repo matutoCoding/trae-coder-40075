@@ -73,29 +73,43 @@ export default function Sidebar() {
           return (
             <div key={item.label}>
               {hasChildren ? (
-                <button
-                  onClick={() => toggleGroup(item.label)}
-                  className={cn(
-                    'flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors',
-                    active
-                      ? 'border-l-2 border-industrial-orange bg-steel-700 text-industrial-orange'
-                      : 'border-l-2 border-transparent text-steel-300 hover:bg-steel-700 hover:text-white',
-                    collapsed && 'justify-center px-0',
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
+                <div className="relative">
+                  <NavLink
+                    to={item.to}
+                    end={false}
+                    className={cn(
+                      'flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                      active
+                        ? 'border-l-2 border-industrial-orange bg-steel-700 text-industrial-orange'
+                        : 'border-l-2 border-transparent text-steel-300 hover:bg-steel-700 hover:text-white',
+                      collapsed && 'justify-center px-0',
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
                   {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left">{item.label}</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleGroup(item.label)
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-steel-400 hover:text-white rounded hover:bg-steel-600 transition-colors"
+                    >
                       <ChevronDown
                         className={cn(
                           'h-4 w-4 shrink-0 transition-transform',
                           open && 'rotate-180',
                         )}
                       />
-                    </>
+                    </button>
                   )}
-                </button>
+                </div>
               ) : (
                 <NavLink
                   to={item.to}

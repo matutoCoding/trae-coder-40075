@@ -41,7 +41,7 @@ export default function CuttingParams() {
   }
 
   const handleApply = (id: string) => {
-    navigate('/cutting/monitor')
+    navigate('/cutting')
   }
 
   const handleAddTemplate = () => {
@@ -61,7 +61,7 @@ export default function CuttingParams() {
   return (
     <div className="min-h-screen bg-steel-900 p-6 font-body">
       <div className="flex items-center gap-3 mb-6">
-        <Link to="/cutting/monitor" className="text-steel-400 hover:text-white transition-colors">
+        <Link to="/cutting" className="text-steel-400 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <Settings className="w-6 h-6 text-industrial-orange" />
